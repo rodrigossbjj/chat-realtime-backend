@@ -11,3 +11,11 @@ obj/
 
 # Outros
 *.log
+
+
+# Configurações locais
+.env
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+
