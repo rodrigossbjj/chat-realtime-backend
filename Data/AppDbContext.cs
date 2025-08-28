@@ -9,6 +9,7 @@ namespace chat_realtime_backend.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public object Usuarios { get; internal set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
