@@ -3,6 +3,10 @@ using chat_realtime_backend.Data;
 using chat_realtime_backend.DTOs;
 using chat_realtime_backend.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -20,17 +24,17 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public IActionResult Register(RegisterDto dto)
     {
-        if (_context.Usuarios.Any(u => u.Email == dto.Email))
+        if (_context.Users.Any(u => u.Email == dto.Email))
             return BadRequest("Email já cadastrado.");
 
-        var usuario = new Usuario
+        var usuario = new User
         {
-            Nome = dto.Nome,
+            Username = dto.Username,
             Email = dto.Email,
-            SenhaHash = BCrypt.Net.BCrypt.HashPassword(dto.Senha)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
         };
 
-        _context.Usuarios.Add(usuario);
+        _context.Users.Add(usuario);
         _context.SaveChanges();
 
         return Ok("Usuário registrado com sucesso!");
@@ -39,8 +43,8 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login(LoginDto dto)
     {
-        var usuario = _context.Usuarios.FirstOrDefault(u => u.Email == dto.Email);
-        if (usuario == null || !BCrypt.Net.BCrypt.Verify(dto.Senha, usuario.SenhaHash))
+        var usuario = _context.Users.FirstOrDefault(u => u.Email == dto.Email);
+        if (usuario == null || !BCrypt.Net.BCrypt.Verify(dto.Password, usuario.PasswordHash))
             return Unauthorized("Credenciais inválidas.");
 
         var token = GenerateJwtToken(usuario);
@@ -48,7 +52,7 @@ public class AuthController : ControllerBase
         return Ok(new { token });
     }
 
-    private string GenerateJwtToken(Usuario usuario)
+    private string GenerateJwtToken(User usuario)
     {
         var claims = new[]
         {

@@ -1,0 +1,27 @@
+﻿<h2>Registrar Usuário</h2>
+<input id="regUsername" placeholder="Username" />
+<input id="regEmail" placeholder="Email" />
+<input id="regPassword" type="password" placeholder="Senha" />
+<button id="registerBtn">Registrar</button>
+
+<script>
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+        const username = document.getElementById("regUsername").value;
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPassword").value;
+
+        try {
+            const response = await fetch("https://localhost:5001/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, email, password })
+            });
+
+            if (!response.ok) throw new Error(await response.text());
+
+            alert("Usuário registrado com sucesso!");
+        } catch (err) {
+            alert("Erro ao registrar: " + err);
+        }
+    });
+</script>
