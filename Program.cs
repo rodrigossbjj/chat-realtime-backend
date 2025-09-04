@@ -2,8 +2,9 @@ using chat_realtime_backend.Data;
 using chat_realtime_backend.Hubs;
 using chat_realtime_backend.Services;
 using DotNetEnv;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 namespace chat_realtime_backend
@@ -28,6 +29,7 @@ namespace chat_realtime_backend
             // Serviços
             builder.Services.AddScoped<ChatService>();
             builder.Services.AddSignalR();
+            builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
 
             // Ler variáveis JWT do .env
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");

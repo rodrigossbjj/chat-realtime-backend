@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.SignalR;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace chat_realtime_backend.Hubs
 {
@@ -14,19 +15,21 @@ namespace chat_realtime_backend.Hubs
             _chatService = chatService;
         }
 
-        public async Task SendMessage(string message)
+        public async Task SendMessage(int receiverId, string message)
         {
-            // Pegando o ID do usuário a partir do JWT
-            var userIdClaim = Context.User.Claims.FirstOrDefault(c => c.Type == "id");
-            if (userIdClaim == null) return;
+            var senderIdClaim = Context.User.Claims.FirstOrDefault(c => c.Type == "id");
+            if (senderIdClaim == null) return;
 
-            int userId = int.Parse(userIdClaim.Value);
+            int senderId = int.Parse(senderIdClaim.Value);
 
-            // Salvar mensagem no banco (receiverId pode ser null para teste)
-            await _chatService.SaveMessage(userId, 0, message);
+            // Salvar mensagem no banco
+            await _chatService.SaveMessage(senderId, receiverId, message);
 
-            // Enviar para todos conectados
-            await Clients.All.SendAsync("ReceiveMessage", userId, message);
+            await Clients.User(receiverId.ToString())
+                .SendAsync("ReceiveMessage", senderId, message);
+
+            await Clients.Caller.SendAsync("ReceiveMessage", senderId, message);
         }
+
     }
 }
