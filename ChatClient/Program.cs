@@ -3,29 +3,57 @@ using System.Net.Http.Json;
 
 class Program
 {
+    private static string apiUrl = "http://localhost:5107";
+    private static HubConnection? connection;
+
     static async Task Main(string[] args)
     {
-        var apiUrl = "http://localhost:5107"; // sua API rodando
-        var email = "teste2@teste.com";       // usuário já registrado
-        var senha = "12345";                 // senha cadastrada
+        Console.WriteLine("=== Cliente de Chat ===");
 
-        // 1) Fazer login e obter token JWT
+        // 1) Login
+        var token = await LoginAsync();
+        if (string.IsNullOrEmpty(token))
+        {
+            Console.WriteLine("Não foi possível autenticar.");
+            return;
+        }
+
+        // 2) Conectar ao hub
+        await ConectarAsync(token);
+
+        // 3) Iniciar menu
+        await MenuAsync();
+
+        // 4) Encerrar conexão
+        await connection!.StopAsync();
+        Console.WriteLine("Conexão encerrada. Até logo!");
+    }
+
+    private static async Task<string?> LoginAsync()
+    {
+        Console.Write("E-mail: ");
+        var email = Console.ReadLine();
+
+        Console.Write("Senha: ");
+        var senha = Console.ReadLine();
+
         var http = new HttpClient();
         var response = await http.PostAsJsonAsync($"{apiUrl}/api/auth/login", new { Email = email, Password = senha });
 
         if (!response.IsSuccessStatusCode)
         {
             Console.WriteLine("Erro ao fazer login: " + await response.Content.ReadAsStringAsync());
-            return;
+            return null;
         }
 
         var loginResult = await response.Content.ReadFromJsonAsync<LoginResponse>();
-        var token = loginResult!.Token;
+        Console.WriteLine("Login realizado com sucesso!");
+        return loginResult!.Token;
+    }
 
-        Console.WriteLine($"Token recebido: {token.Substring(0, 20)}...");
-
-        // 2) Conectar ao Hub passando o token
-        var connection = new HubConnectionBuilder()
+    private static async Task ConectarAsync(string token)
+    {
+        connection = new HubConnectionBuilder()
             .WithUrl($"{apiUrl}/chat", options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult(token)!;
@@ -33,41 +61,48 @@ class Program
             .WithAutomaticReconnect()
             .Build();
 
-        // 3) Escutar mensagens recebidas
+        // Escutar mensagens recebidas
         connection.On<int, string>("ReceiveMessage", (userId, message) =>
         {
-            Console.WriteLine($"[Mensagem de {userId}]: {message}");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"\n📩 Mensagem recebida de [{userId}]: {message}");
+            Console.ResetColor();
+            Console.Write("Opção: "); // mantém prompt ativo
         });
 
         await connection.StartAsync();
-        Console.WriteLine("Conectado ao Hub!");
+        Console.WriteLine("✅ Conectado ao Hub!");
+    }
 
+    private static async Task MenuAsync()
+    {
         int opcao;
         do
         {
-            Console.WriteLine("\nEscolha uma opção:");
+            Console.WriteLine("\n--- Menu ---");
             Console.WriteLine("1 - Enviar mensagem");
             Console.WriteLine("2 - Sair");
             Console.Write("Opção: ");
             var input = Console.ReadLine();
+
             if (!int.TryParse(input, out opcao)) continue;
 
             switch (opcao)
             {
                 case 1:
-                    Console.Write("Digite o Id do usuário receptor: ");
+                    Console.Write("Id do usuário receptor: ");
                     if (!int.TryParse(Console.ReadLine(), out int receiverId))
                     {
-                        Console.WriteLine("Id inválido!");
+                        Console.WriteLine("❌ Id inválido!");
                         break;
                     }
 
-                    Console.Write("Digite a mensagem: ");
+                    Console.Write("Mensagem: ");
                     var msg = Console.ReadLine();
                     if (string.IsNullOrWhiteSpace(msg)) break;
 
-                    // Chamar hub enviando para usuário específico
-                    await connection.InvokeAsync("SendMessage", receiverId, msg);
+                    await connection!.InvokeAsync("SendMessage", receiverId, msg);
+                    Console.WriteLine("✅ Mensagem enviada!");
                     break;
 
                 case 2:
@@ -80,8 +115,6 @@ class Program
             }
 
         } while (opcao != 2);
-
-        await connection.StopAsync();
     }
 }
 
